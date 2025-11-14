@@ -1,0 +1,29 @@
+-- Esquema para la tabla 'logistica'
+-- Apto para el editor SQL de Supabase
+
+-- 1. Crear el tipo ENUM para el estatus
+CREATE TYPE estatus_logistica AS ENUM ('En Almacén', 'En Ruta', 'Entregado', 'Retrasado');
+
+-- 2. Crear la tabla 'logistica'
+CREATE TABLE logistica (
+    id TEXT PRIMARY KEY,
+    folio TEXT NOT NULL,
+    estatus estatus_logistica NOT NULL,
+    f_entrega DATE NOT NULL,
+    cliente TEXT NOT NULL,
+    repartidor TEXT NOT NULL,
+    pais TEXT NOT NULL,
+    estado TEXT NOT NULL,
+    ciudad TEXT NOT NULL,
+    codigo_postal TEXT NOT NULL,
+    colonia TEXT NOT NULL,
+    calle TEXT NOT NULL,
+    referencias TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 3. Insertar los datos iniciales
+INSERT INTO logistica (id, folio, estatus, f_entrega, cliente, repartidor, pais, estado, ciudad, codigo_postal, colonia, calle, referencias) VALUES
+('LOG-001', 'F-L-01', 'En Ruta', '2023-12-10', 'Global Imports', 'Juan Pérez', 'México', 'Jalisco', 'Guadalajara', '44100', 'Centro', 'Av. Juárez 123', 'Edificio de cristal, puerta negra'),
+('LOG-002', 'F-L-02', 'Entregado', '2023-11-25', 'Creative Minds', 'Ana Gómez', 'México', 'Nuevo León', 'Monterrey', '64000', 'Del Valle', 'Calzada del Valle 456', 'Frente al parque'),
+('LOG-003', 'F-L-03', 'En Almacén', '2023-12-20', 'Futura Tech', 'Carlos Sánchez', 'México', 'CDMX', 'Ciudad de México', '06000', 'Roma Norte', 'Orizaba 789', 'Portón de madera');

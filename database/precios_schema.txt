@@ -1,0 +1,28 @@
+-- Esquema para la tabla 'precios'
+-- Apto para el editor SQL de Supabase
+
+-- 1. Crear el tipo ENUM para el estatus
+CREATE TYPE estatus_precio AS ENUM ('Pagado', 'Pendiente de Pago', 'Vencido');
+
+-- 2. Crear la tabla 'precios'
+CREATE TABLE precios (
+    id TEXT PRIMARY KEY,
+    folio TEXT NOT NULL,
+    estatus estatus_precio NOT NULL,
+    f_entrega DATE NOT NULL,
+    cliente TEXT NOT NULL,
+    forma_pago TEXT NOT NULL,
+    precio NUMERIC(10, 2) NOT NULL,
+    envio NUMERIC(10, 2) NOT NULL,
+    costo NUMERIC(10, 2) NOT NULL,
+    ganancia NUMERIC(10, 2) NOT NULL,
+    producto TEXT NOT NULL,
+    sku TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 3. Insertar los datos iniciales
+INSERT INTO precios (id, folio, cliente, estatus, f_entrega, forma_pago, precio, envio, costo, ganancia, producto, sku) VALUES
+('PRC-001', 'Venta mayoreo', 'Tech Distributors', 'Pagado', '2023-11-05', 'PayPal', 1200.00, 50.00, 800.00, 400.00, 'Laptop Stand', 'LS-001'),
+('PRC-002', 'Venta menudeo', 'Innovate Corp', 'Pendiente de Pago', '2023-11-12', 'Stripe', 150.00, 20.00, 90.00, 60.00, 'Mousepad', 'MP-005'),
+('PRC-003', 'Factura a crédito', 'Office Supplies Inc.', 'Vencido', '2023-10-20', 'Depósito', 5000.00, 150.00, 3500.00, 1500.00, 'Silla Ergonómica', 'SE-002');

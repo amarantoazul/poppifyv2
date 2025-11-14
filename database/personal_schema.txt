@@ -1,0 +1,23 @@
+-- Esquema para la tabla 'personal'
+-- Apto para el editor SQL de Supabase
+
+-- 1. Crear el tipo ENUM para el estatus
+CREATE TYPE estatus_personal AS ENUM ('Pendiente', 'En Diseño', 'Listo para Entrega', 'Entregado');
+
+-- 2. Crear la tabla 'personal'
+CREATE TABLE personal (
+    id TEXT PRIMARY KEY,
+    folio TEXT NOT NULL,
+    estatus estatus_personal NOT NULL,
+    f_entrega DATE NOT NULL,
+    cliente TEXT NOT NULL,
+    dedicatoria TEXT,
+    notas TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 3. Insertar los datos iniciales
+INSERT INTO personal (id, folio, estatus, f_entrega, cliente, dedicatoria, notas) VALUES
+('PER-001', 'FP-001', 'Listo para Entrega', '2023-12-15', 'Global Imports', 'Para el mejor equipo, con aprecio.', 'Entregar en recepción.'),
+('PER-002', 'FP-002', 'En Diseño', '2023-12-22', 'Creative Minds', 'Felices fiestas y próspero año nuevo.', 'Confirmar diseño antes de imprimir.'),
+('PER-003', 'FP-003', 'Pendiente', '2024-01-05', 'Futura Tech', 'Gracias por su preferencia.', 'Cliente solicitará muestra física.');

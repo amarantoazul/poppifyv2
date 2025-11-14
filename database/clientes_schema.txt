@@ -1,0 +1,25 @@
+-- Esquema para la tabla 'clientes'
+-- Apto para el editor SQL de Supabase
+
+-- 1. Crear el tipo ENUM para el estatus
+CREATE TYPE estatus_cliente AS ENUM ('Activo', 'Inactivo', 'Potencial');
+
+-- 2. Crear la tabla 'clientes'
+CREATE TABLE clientes (
+    id TEXT PRIMARY KEY,
+    folio TEXT NOT NULL,
+    estatus estatus_cliente NOT NULL,
+    f_entrega DATE NOT NULL,
+    cliente TEXT NOT NULL,
+    correo TEXT NOT NULL,
+    telefono TEXT NOT NULL,
+    destinatario TEXT NOT NULL,
+    tel_destino TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 3. Insertar los datos iniciales
+INSERT INTO clientes (id, folio, estatus, f_entrega, cliente, correo, telefono, destinatario, tel_destino) VALUES
+('CLI-001', 'F-CL-01', 'Activo', '2023-12-01', 'Global Imports', 'contact@globalimports.com', '555-0101', 'Almacén Central', '555-0102'),
+('CLI-002', 'F-CL-02', 'Inactivo', '2023-11-15', 'Creative Minds', 'hello@creativeminds.dev', '555-0201', 'Oficina de Proyectos', '555-0202'),
+('CLI-003', 'F-CL-03', 'Potencial', '2024-01-10', 'Futura Tech', 'info@futuratech.io', '555-0301', 'Gerencia', '555-0302');

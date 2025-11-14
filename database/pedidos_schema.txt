@@ -1,0 +1,25 @@
+-- Esquema para la tabla 'pedidos'
+-- Apto para el editor SQL de Supabase
+
+-- 1. Crear el tipo ENUM para el estatus
+CREATE TYPE estatus_pedido AS ENUM ('Pendiente', 'En Proceso', 'Entregado', 'Cancelado');
+
+-- 2. Crear la tabla 'pedidos'
+CREATE TABLE pedidos (
+    id TEXT PRIMARY KEY,
+    folio TEXT NOT NULL,
+    cliente TEXT NOT NULL,
+    f_compra DATE NOT NULL,
+    f_entrega DATE NOT NULL,
+    estatus estatus_pedido NOT NULL,
+    turno TEXT NOT NULL,
+    sucursal TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 3. Insertar los datos iniciales
+INSERT INTO pedidos (id, folio, cliente, f_compra, f_entrega, estatus, turno, sucursal) VALUES
+('ORD-001', 'F-A123', 'Oficina Central', '2023-10-26', '2023-10-30', 'Entregado', 'Matutino', 'Centro'),
+('ORD-002', 'F-B456', 'Tech Solutions', '2023-10-27', '2023-11-05', 'En Proceso', 'Vespertino', 'Norte'),
+('ORD-003', 'F-C789', 'Clean Co.', '2023-10-28', '2023-11-02', 'Pendiente', 'Matutino', 'Sur'),
+('ORD-004', 'F-D012', 'Diseño Interior Mx', '2023-10-29', '2023-11-10', 'Cancelado', 'Nocturno', 'Centro');

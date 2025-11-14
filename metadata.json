@@ -1,0 +1,5 @@
+{
+  "name": "Panel de Control de Órdenes",
+  "description": "Una aplicación de panel de control para gestionar pedidos, precios, clientes y más, con una tabla de cuadrícula para crear y ver registros de pedidos.",
+  "requestFramePermissions": []
+}
