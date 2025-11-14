@@ -1,20 +1,24 @@
 
 import React, { useState, useMemo, Fragment } from 'react';
-import { Personal, EstatusPersonal } from '../lib/types';
-import { initialPersonal } from '../lib/data';
+import { Personal, EstatusPedido, EstatusConfig } from '../lib/types';
 import { PlusIcon, EditIcon, DeleteIcon, SaveIcon, CancelIcon, SortIcon, SortAscIcon, SortDescIcon } from './icons/Icons';
 import CustomSelect from './CustomSelect';
 
 interface PersonalTableProps {
+  personal: Personal[];
+  setPersonal: React.Dispatch<React.SetStateAction<Personal[]>>;
+  estatusConfig: EstatusConfig[];
   setIsSelectOpen: (isOpen: boolean) => void;
 }
 
-const getStatusColor = (status: EstatusPersonal) => {
+const getStatusColor = (status: EstatusPedido) => {
   switch (status) {
-    case EstatusPersonal.Entregado: return 'bg-green-100 text-green-800';
-    case EstatusPersonal.Listo: return 'bg-blue-100 text-blue-800';
-    case EstatusPersonal.EnDiseño: return 'bg-yellow-100 text-yellow-800';
-    case EstatusPersonal.Pendiente: return 'bg-gray-100 text-gray-800';
+    case EstatusPedido.Entregado: return 'bg-green-100 text-green-800';
+    case EstatusPedido.Preparacion: return 'bg-yellow-100 text-yellow-800';
+    case EstatusPedido.EnEspera: return 'bg-blue-100 text-blue-800';
+    case EstatusPedido.Cancelado: return 'bg-red-100 text-red-800';
+    case EstatusPedido.EnTransito: return 'bg-purple-100 text-purple-800';
+    case EstatusPedido.Regresado: return 'bg-orange-100 text-orange-800';
     default: return 'bg-gray-100 text-gray-800';
   }
 };
@@ -50,17 +54,19 @@ const SortableHeader: React.FC<{
   );
 };
 
-const PersonalTable: React.FC<PersonalTableProps> = ({ setIsSelectOpen }) => {
-  const [personal, setPersonal] = useState<Personal[]>(initialPersonal);
+const PersonalTable: React.FC<PersonalTableProps> = ({ personal, setPersonal, estatusConfig, setIsSelectOpen }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newRegistro, setNewRegistro] = useState<Omit<Personal, 'id'>>({
-    folio: '', estatus: EstatusPersonal.Pendiente, fentrega: '', cliente: '', dedicatoria: '', notas: ''
+    folio: '', estatus: estatusConfig[0]?.nombre || EstatusPedido.EnEspera, fentrega: '', cliente: '', dedicatoria: '', notas: ''
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<Personal | null>(null);
+  const [editingCell, setEditingCell] = useState<{ rowId: string; columnKey: keyof Personal } | null>(null);
 
   const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>(null);
+  
+  const estatusOptions = useMemo(() => estatusConfig.map(s => ({ value: s.nombre, label: s.nombre })), [estatusConfig]);
 
   const sortedPersonal = useMemo(() => {
     let sortableItems = [...personal];
@@ -86,9 +92,8 @@ const PersonalTable: React.FC<PersonalTableProps> = ({ setIsSelectOpen }) => {
     setSortConfig({ key, direction });
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setNewRegistro({ ...newRegistro, [name]: value });
+  const handleModalFormChange = (name: string, value: string) => {
+    setNewRegistro(prev => ({ ...prev, [name]: value }));
   };
   
   const handleAddRegistro = (e: React.FormEvent) => {
@@ -97,11 +102,12 @@ const PersonalTable: React.FC<PersonalTableProps> = ({ setIsSelectOpen }) => {
     const newRecord: Personal = { ...newRegistro, id: newId };
     setPersonal([...personal, newRecord]);
     setIsModalOpen(false);
-    setNewRegistro({ folio: '', estatus: EstatusPersonal.Pendiente, fentrega: '', cliente: '', dedicatoria: '', notas: '' });
+    setNewRegistro({ folio: '', estatus: estatusConfig[0]?.nombre || EstatusPedido.EnEspera, fentrega: '', cliente: '', dedicatoria: '', notas: '' });
   };
 
   const handleEditClick = (registro: Personal) => {
     setEditingId(registro.id);
+    setEditingCell(null);
     setEditFormData({ ...registro });
   };
   
@@ -129,6 +135,80 @@ const PersonalTable: React.FC<PersonalTableProps> = ({ setIsSelectOpen }) => {
       setEditFormData({ ...editFormData, [name]: value });
   };
 
+  const handleCellDoubleClick = (rowId: string, columnKey: keyof Personal) => {
+    if (editingId !== rowId) {
+        setEditingCell({ rowId, columnKey });
+    }
+  };
+
+  const handleCellUpdate = (rowId: string, columnKey: keyof Personal, value: any) => {
+    setPersonal(prevPersonal =>
+      prevPersonal.map(p =>
+        p.id === rowId ? { ...p, [columnKey]: value } : p
+      )
+    );
+    setEditingCell(null);
+  };
+
+  const handleCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      if (e.key === 'Enter' && e.currentTarget.tagName !== 'TEXTAREA') {
+          (e.target as HTMLElement).blur();
+      } else if (e.key === 'Escape') {
+          setEditingCell(null);
+      }
+  };
+
+  const renderCell = (p: Personal, columnKey: keyof Personal) => {
+    const isEditing = editingCell?.rowId === p.id && editingCell?.columnKey === columnKey;
+    const isDate = ['fentrega'].includes(columnKey);
+    const isTextArea = ['dedicatoria', 'notas'].includes(columnKey);
+
+    if (isEditing) {
+        if (columnKey === 'estatus') {
+            return (
+                <CustomSelect
+                    value={p.estatus}
+                    options={estatusOptions}
+                    onChange={(value) => handleCellUpdate(p.id, columnKey, value as EstatusPedido)}
+                    onOpenChange={setIsSelectOpen}
+                />
+            );
+        }
+        if (isTextArea) {
+          return (
+            <textarea
+                defaultValue={p[columnKey] as any}
+                onBlur={(e) => handleCellUpdate(p.id, columnKey, e.target.value)}
+                onKeyDown={handleCellKeyDown}
+                autoFocus
+                className="w-full px-2 py-1 border rounded-md bg-white text-sm"
+                rows={3}
+            />
+          )
+        }
+        return (
+            <input
+                type={isDate ? 'date' : 'text'}
+                defaultValue={p[columnKey] as any}
+                onBlur={(e) => handleCellUpdate(p.id, columnKey, e.target.value)}
+                onKeyDown={handleCellKeyDown}
+                autoFocus
+                className="w-full px-2 py-1 border rounded-md bg-white text-sm"
+            />
+        );
+    }
+    
+    if (columnKey === 'estatus') {
+        return (
+            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(p.estatus)}`}>
+                {p.estatus}
+            </span>
+        );
+    }
+    
+    return <span className="text-sm text-gray-500 max-w-xs truncate block">{p[columnKey]}</span>;
+  };
+
   const headers: { key: SortKeys, title: string }[] = [
     { key: 'id', title: 'ID' },
     { key: 'folio', title: 'Folio' },
@@ -148,7 +228,7 @@ const PersonalTable: React.FC<PersonalTableProps> = ({ setIsSelectOpen }) => {
             <td className="px-6 py-4">
                 <CustomSelect
                     value={editFormData.estatus}
-                    options={Object.values(EstatusPersonal).map(s => ({ value: s, label: s }))}
+                    options={estatusOptions}
                     onChange={(value) => handleCustomSelectChange('estatus', value)}
                     onOpenChange={setIsSelectOpen}
                 />
@@ -167,21 +247,15 @@ const PersonalTable: React.FC<PersonalTableProps> = ({ setIsSelectOpen }) => {
   
   const renderReadOnlyRow = (p: Personal) => (
     <tr key={p.id} className="hover:bg-gray-50">
-        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{p.id}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.folio}</td>
-        <td className="px-6 py-4 whitespace-nowrap">
-            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(p.estatus)}`}>
-            {p.estatus}
-            </span>
+      {headers.map(header => (
+        <td onDoubleClick={() => handleCellDoubleClick(p.id, header.key)} key={header.key} className="px-6 py-4 whitespace-nowrap">
+          {renderCell(p, header.key)}
         </td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.fentrega}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.cliente}</td>
-        <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{p.dedicatoria}</td>
-        <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{p.notas}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-4">
-            <button onClick={() => handleEditClick(p)} className="text-indigo-600 hover:text-indigo-900"><EditIcon /></button>
-            <button className="text-red-600 hover:text-red-900"><DeleteIcon /></button>
-        </td>
+      ))}
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-4">
+          <button onClick={() => handleEditClick(p)} className="text-indigo-600 hover:text-indigo-900"><EditIcon /></button>
+          <button className="text-red-600 hover:text-red-900"><DeleteIcon /></button>
+      </td>
     </tr>
   );
 
@@ -232,22 +306,25 @@ const PersonalTable: React.FC<PersonalTableProps> = ({ setIsSelectOpen }) => {
              <h3 className="text-2xl font-semibold text-gray-800 mb-6">Crear Registro Personal</h3>
              <form onSubmit={handleAddRegistro}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div><label className="text-gray-700">Folio</label><input name="folio" value={newRegistro.folio} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Folio</label><input name="folio" value={newRegistro.folio} onChange={(e) => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
                     <div>
                         <label className="text-gray-700">Estatus</label>
-                        <select name="estatus" value={newRegistro.estatus} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            {Object.values(EstatusPersonal).map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                        <CustomSelect
+                            value={newRegistro.estatus}
+                            options={estatusOptions}
+                            onChange={(value) => handleModalFormChange('estatus', value)}
+                            onOpenChange={setIsSelectOpen}
+                        />
                     </div>
-                    <div><label className="text-gray-700">Fecha de Entrega</label><input type="date" name="fentrega" value={newRegistro.fentrega} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
-                    <div><label className="text-gray-700">Cliente</label><input name="cliente" value={newRegistro.cliente} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Fecha de Entrega</label><input type="date" name="fentrega" value={newRegistro.fentrega} onChange={(e) => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Cliente</label><input name="cliente" value={newRegistro.cliente} onChange={(e) => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
                     <div className="md:col-span-2">
                         <label className="text-gray-700">Dedicatoria</label>
-                        <textarea name="dedicatoria" value={newRegistro.dedicatoria} onChange={handleInputChange} rows={3} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                        <textarea name="dedicatoria" value={newRegistro.dedicatoria} onChange={(e) => handleModalFormChange(e.target.name, e.target.value)} rows={3} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
                     </div>
                      <div className="md:col-span-2">
                         <label className="text-gray-700">Notas Adicionales</label>
-                        <textarea name="notas" value={newRegistro.notas} onChange={handleInputChange} rows={3} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                        <textarea name="notas" value={newRegistro.notas} onChange={(e) => handleModalFormChange(e.target.name, e.target.value)} rows={3} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
                     </div>
                 </div>
                 <div className="flex justify-end mt-8 space-x-4">

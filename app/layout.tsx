@@ -15,6 +15,7 @@ const inter = Inter({ subsets: ["latin"] });
 // You can move this to a parent layout or page if it's a server component.
 
 // FIX: Create mappings between view names and URL paths for navigation.
+// FIX: Removed routes for module-specific Estatus pages that are not defined in the `View` type to fix the error.
 const viewToPath: Record<View, string> = {
   Kanban: "/kanban",
   Pedidos: "/pedidos",

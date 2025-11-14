@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Pedido, EstatusPedido, EstatusConfig } from '../lib/types';
 import { ClockIcon, SettingsIcon, PaperAirplaneIcon, GiftIcon, SadFaceIcon, ReplyIcon } from './icons/Icons';
@@ -73,6 +72,10 @@ const KanbanCard: React.FC<{ pedido: Pedido }> = ({ pedido }) => {
                     <div className="flex items-center">
                         <span className="font-semibold w-20">Repartidor:</span>
                         <span>{pedido.repartidor}</span>
+                    </div>
+                    <div className="flex items-center">
+                        <span className="font-semibold w-20">Turno:</span>
+                        <span>{pedido.turno}</span>
                     </div>
                     <div className="flex items-center">
                         <span className="font-semibold w-20">F. Entrega:</span>

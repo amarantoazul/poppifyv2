@@ -39,16 +39,10 @@ export interface Pedido {
   producto: string;
 }
 
-export enum EstatusPrecio {
-  Pagado = 'Pagado',
-  Pendiente = 'Pendiente de Pago',
-  Vencido = 'Vencido',
-}
-
 export interface Precio {
   id: string;
   folio: string;
-  estatus: EstatusPrecio;
+  estatus: EstatusPedido; // <- Unificado
   fentrega: string;
   cliente: string;
   fPago: string;
@@ -60,16 +54,10 @@ export interface Precio {
   sku: string;
 }
 
-export enum EstatusCliente {
-  Activo = 'Activo',
-  Inactivo = 'Inactivo',
-  Potencial = 'Potencial',
-}
-
 export interface Cliente {
   id: string;
   folio: string;
-  estatus: EstatusCliente;
+  estatus: EstatusPedido; // <- Unificado
   fentrega: string;
   cliente: string;
   correo: string;
@@ -78,17 +66,10 @@ export interface Cliente {
   telDestino: string;
 }
 
-export enum EstatusLogistica {
-  EnAlmacen = 'En Almacén',
-  EnRuta = 'En Ruta',
-  Entregado = 'Entregado',
-  Retrasado = 'Retrasado',
-}
-
 export interface Logistica {
   id: string;
   folio: string;
-  estatus: EstatusLogistica;
+  estatus: EstatusPedido; // <- Unificado
   fentrega: string;
   cliente: string;
   repartidor: string;
@@ -101,17 +82,10 @@ export interface Logistica {
   referencias: string;
 }
 
-export enum EstatusPersonal {
-  Pendiente = 'Pendiente',
-  EnDiseño = 'En Diseño',
-  Listo = 'Listo para Entrega',
-  Entregado = 'Entregado',
-}
-
 export interface Personal {
   id: string;
   folio: string;
-  estatus: EstatusPersonal;
+  estatus: EstatusPedido; // <- Unificado
   fentrega: string;
   cliente: string;
   dedicatoria: string;
@@ -122,7 +96,6 @@ export interface Personal {
 
 export interface EstatusConfig {
   id: number;
-  // FIX: Use EstatusPedido enum to enforce consistency with the rest of the app.
   nombre: EstatusPedido;
   descripcion: string;
   notificaciones: {
@@ -134,7 +107,7 @@ export interface EstatusConfig {
 
 export interface Turno {
   id: string;
-  nombre: 'Matutino' | 'Vespertino' | 'Nocturno';
+  nombre: string;
   horario: string;
 }
 

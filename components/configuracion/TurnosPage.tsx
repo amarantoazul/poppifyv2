@@ -1,11 +1,16 @@
 
 import React, { useState, Fragment } from 'react';
-import { initialTurnos } from '../../lib/data';
-import { Turno } from '../../lib/types';
+import { Turno, Pedido } from '../../lib/types';
 import { EditIcon, DeleteIcon, PauseIcon, PlusIcon, SaveIcon, CancelIcon } from '../icons/Icons';
 
-const TurnosPage: React.FC = () => {
-  const [turnos, setTurnos] = useState<Turno[]>(initialTurnos);
+interface TurnosPageProps {
+  turnos: Turno[];
+  setTurnos: React.Dispatch<React.SetStateAction<Turno[]>>;
+  pedidos: Pedido[];
+  setPedidos: React.Dispatch<React.SetStateAction<Pedido[]>>;
+}
+
+const TurnosPage: React.FC<TurnosPageProps> = ({ turnos, setTurnos, pedidos, setPedidos }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<Turno | null>(null);
 
@@ -21,8 +26,26 @@ const TurnosPage: React.FC = () => {
 
   const handleSaveClick = (id: string) => {
     if (!editFormData) return;
+
+    const originalTurno = turnos.find(t => t.id === id);
+    if (!originalTurno) return;
+
+    const oldTurnoName = originalTurno.nombre;
+    const newTurnoName = editFormData.nombre;
+
     const newTurnos = turnos.map((turno) => (turno.id === id ? editFormData : turno));
     setTurnos(newTurnos);
+
+    if (oldTurnoName !== newTurnoName) {
+      const updatedPedidos = pedidos.map(pedido => {
+        if (pedido.turno === oldTurnoName) {
+          return { ...pedido, turno: newTurnoName };
+        }
+        return pedido;
+      });
+      setPedidos(updatedPedidos);
+    }
+    
     setEditingId(null);
     setEditFormData(null);
   };

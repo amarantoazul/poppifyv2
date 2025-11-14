@@ -1,8 +1,8 @@
 
 import { 
-  Pedido, EstatusPedido, Precio, EstatusPrecio, Cliente, EstatusCliente, 
-  Logistica, EstatusLogistica, Personal, EstatusPersonal, EstatusConfig, 
-  Turno, Sucursal, FormaDePago, Repartidor, Zona, ClienteConfig, Producto, Perfil 
+  Pedido, EstatusPedido, Precio, Cliente, 
+  Logistica, Personal, EstatusConfig, 
+  Turno, Sucursal, FormaDePago, Repartidor, Zona, ClienteConfig, Producto, Perfil
 } from './types';
 
 export const initialPedidos: Pedido[] = [
@@ -15,34 +15,33 @@ export const initialPedidos: Pedido[] = [
 ];
 
 export const initialPrecios: Precio[] = [
-  { id: 'PRC-001', folio: 'Venta mayoreo', cliente: 'Tech Distributors', estatus: EstatusPrecio.Pagado, fentrega: '2023-11-05', fPago: 'PayPal', precio: 1200, envio: 50, costo: 800, ganancia: 400, producto: 'Laptop Stand', sku: 'LS-001' },
-  { id: 'PRC-002', folio: 'Venta menudeo', cliente: 'Innovate Corp', estatus: EstatusPrecio.Pendiente, fentrega: '2023-11-12', fPago: 'Stripe', precio: 150, envio: 20, costo: 90, ganancia: 60, producto: 'Mousepad', sku: 'MP-005' },
-  { id: 'PRC-003', folio: 'Factura a crédito', cliente: 'Office Supplies Inc.', estatus: EstatusPrecio.Vencido, fentrega: '2023-10-20', fPago: 'Depósito', precio: 5000, envio: 150, costo: 3500, ganancia: 1500, producto: 'Silla Ergonómica', sku: 'SE-002' },
+  { id: 'PRC-001', folio: 'Venta mayoreo', cliente: 'Tech Distributors', estatus: EstatusPedido.Entregado, fentrega: '2023-11-05', fPago: 'PayPal', precio: 1200, envio: 50, costo: 800, ganancia: 400, producto: 'Laptop Stand', sku: 'LS-001' },
+  { id: 'PRC-002', folio: 'Venta menudeo', cliente: 'Innovate Corp', estatus: EstatusPedido.EnEspera, fentrega: '2023-11-12', fPago: 'Stripe', precio: 150, envio: 20, costo: 90, ganancia: 60, producto: 'Mousepad', sku: 'MP-005' },
+  { id: 'PRC-003', folio: 'Factura a crédito', cliente: 'Office Supplies Inc.', estatus: EstatusPedido.Cancelado, fentrega: '2023-10-20', fPago: 'Depósito', precio: 5000, envio: 150, costo: 3500, ganancia: 1500, producto: 'Silla Ergonómica', sku: 'SE-002' },
 ];
 
 export const initialClientes: Cliente[] = [
-  { id: 'CLI-001', folio: 'F-CL-01', estatus: EstatusCliente.Activo, fentrega: '2023-12-01', cliente: 'Global Imports', correo: 'contact@globalimports.com', telefono: '555-0101', destinatario: 'Almacén Central', telDestino: '555-0102' },
-  { id: 'CLI-002', folio: 'F-CL-02', estatus: EstatusCliente.Inactivo, fentrega: '2023-11-15', cliente: 'Creative Minds', correo: 'hello@creativeminds.dev', telefono: '555-0201', destinatario: 'Oficina de Proyectos', telDestino: '555-0202' },
-  { id: 'CLI-003', folio: 'F-CL-03', estatus: EstatusCliente.Potencial, fentrega: '2024-01-10', cliente: 'Futura Tech', correo: 'info@futuratech.io', telefono: '555-0301', 'destinatario': 'Gerencia', 'telDestino': '555-0302' },
+  { id: 'CLI-001', folio: 'F-CL-01', estatus: EstatusPedido.Entregado, fentrega: '2023-12-01', cliente: 'Global Imports', correo: 'contact@globalimports.com', telefono: '555-0101', destinatario: 'Almacén Central', telDestino: '555-0102' },
+  { id: 'CLI-002', folio: 'F-CL-02', estatus: EstatusPedido.Cancelado, fentrega: '2023-11-15', cliente: 'Creative Minds', correo: 'hello@creativeminds.dev', telefono: '555-0201', destinatario: 'Oficina de Proyectos', telDestino: '555-0202' },
+  { id: 'CLI-003', folio: 'F-CL-03', estatus: EstatusPedido.EnEspera, fentrega: '2024-01-10', cliente: 'Futura Tech', correo: 'info@futuratech.io', telefono: '555-0301', 'destinatario': 'Gerencia', 'telDestino': '555-0302' },
 ];
 
 export const initialLogistica: Logistica[] = [
-  { id: 'LOG-001', folio: 'F-L-01', estatus: EstatusLogistica.EnRuta, fentrega: '2023-12-10', cliente: 'Global Imports', repartidor: 'Juan Pérez', pais: 'México', estado: 'Jalisco', ciudad: 'Guadalajara', codigoPostal: '44100', colonia: 'Centro', calle: 'Av. Juárez 123', referencias: 'Edificio de cristal, puerta negra' },
-  { id: 'LOG-002', folio: 'F-L-02', estatus: EstatusLogistica.Entregado, fentrega: '2023-11-25', cliente: 'Creative Minds', repartidor: 'Ana Gómez', pais: 'México', estado: 'Nuevo León', ciudad: 'Monterrey', codigoPostal: '64000', colonia: 'Del Valle', calle: 'Calzada del Valle 456', referencias: 'Frente al parque' },
-  { id: 'LOG-003', folio: 'F-L-03', estatus: EstatusLogistica.EnAlmacen, fentrega: '2023-12-20', cliente: 'Futura Tech', repartidor: 'Carlos Sánchez', pais: 'México', estado: 'CDMX', ciudad: 'Ciudad de México', codigoPostal: '06000', colonia: 'Roma Norte', calle: 'Orizaba 789', referencias: 'Portón de madera' },
+  { id: 'LOG-001', folio: 'F-L-01', estatus: EstatusPedido.EnTransito, fentrega: '2023-12-10', cliente: 'Global Imports', repartidor: 'Juan Pérez', pais: 'México', estado: 'Jalisco', ciudad: 'Guadalajara', codigoPostal: '44100', colonia: 'Centro', calle: 'Av. Juárez 123', referencias: 'Edificio de cristal, puerta negra' },
+  { id: 'LOG-002', folio: 'F-L-02', estatus: EstatusPedido.Entregado, fentrega: '2023-11-25', cliente: 'Creative Minds', repartidor: 'Ana Gómez', pais: 'México', estado: 'Nuevo León', ciudad: 'Monterrey', codigoPostal: '64000', colonia: 'Del Valle', calle: 'Calzada del Valle 456', referencias: 'Frente al parque' },
+  { id: 'LOG-003', folio: 'F-L-03', estatus: EstatusPedido.EnEspera, fentrega: '2023-12-20', cliente: 'Futura Tech', repartidor: 'Carlos Sánchez', pais: 'México', estado: 'CDMX', ciudad: 'Ciudad de México', codigoPostal: '06000', colonia: 'Roma Norte', calle: 'Orizaba 789', referencias: 'Portón de madera' },
 ];
 
 export const initialPersonal: Personal[] = [
-  { id: 'PER-001', folio: 'FP-001', estatus: EstatusPersonal.Listo, fentrega: '2023-12-15', cliente: 'Global Imports', dedicatoria: 'Para el mejor equipo, con aprecio.', notas: 'Entregar en recepción.' },
-  { id: 'PER-002', folio: 'FP-002', estatus: EstatusPersonal.EnDiseño, fentrega: '2023-12-22', cliente: 'Creative Minds', dedicatoria: 'Felices fiestas y próspero año nuevo.', notas: 'Confirmar diseño antes de imprimir.' },
-  { id: 'PER-003', folio: 'FP-003', estatus: EstatusPersonal.Pendiente, fentrega: '2024-01-05', cliente: 'Futura Tech', dedicatoria: 'Gracias por su preferencia.', notas: 'Cliente solicitará muestra física.' },
+  { id: 'PER-001', folio: 'FP-001', estatus: EstatusPedido.EnTransito, fentrega: '2023-12-15', cliente: 'Global Imports', dedicatoria: 'Para el mejor equipo, con aprecio.', notas: 'Entregar en recepción.' },
+  { id: 'PER-002', folio: 'FP-002', estatus: EstatusPedido.Preparacion, fentrega: '2023-12-22', cliente: 'Creative Minds', dedicatoria: 'Felices fiestas y próspero año nuevo.', notas: 'Confirmar diseño antes de imprimir.' },
+  { id: 'PER-003', folio: 'FP-003', estatus: EstatusPedido.EnEspera, fentrega: '2024-01-05', cliente: 'Futura Tech', dedicatoria: 'Gracias por su preferencia.', notas: 'Cliente solicitará muestra física.' },
 ];
 
 
 // --- DATOS DE CONFIGURACIÓN ---
 
 export const initialEstatusConfig: EstatusConfig[] = [
-    // FIX: Using EstatusPedido enum for consistency and to fix type errors.
     { id: 1, nombre: EstatusPedido.EnEspera, descripcion: 'El pedido ha sido recibido pero aún no se ha procesado.', notificaciones: { push: true, sms: false, email: true } },
     { id: 2, nombre: EstatusPedido.Preparacion, descripcion: 'El pedido se está preparando en la sucursal.', notificaciones: { push: true, sms: true, email: true } },
     { id: 3, nombre: EstatusPedido.EnTransito, descripcion: 'El repartidor ya recogió el pedido y se dirige al destino.', notificaciones: { push: true, sms: true, email: true } },

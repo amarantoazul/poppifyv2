@@ -1,19 +1,24 @@
 
 import React, { useState, useMemo, Fragment } from 'react';
-import { Precio, EstatusPrecio } from '../lib/types';
-import { initialPrecios } from '../lib/data';
+import { Precio, EstatusPedido, EstatusConfig } from '../lib/types';
 import { PlusIcon, EditIcon, DeleteIcon, SaveIcon, CancelIcon, SortIcon, SortAscIcon, SortDescIcon } from './icons/Icons';
 import CustomSelect from './CustomSelect';
 
 interface PreciosTableProps {
+  precios: Precio[];
+  setPrecios: React.Dispatch<React.SetStateAction<Precio[]>>;
+  estatusConfig: EstatusConfig[];
   setIsSelectOpen: (isOpen: boolean) => void;
 }
 
-const getStatusColor = (status: EstatusPrecio) => {
+const getStatusColor = (status: EstatusPedido) => {
   switch (status) {
-    case EstatusPrecio.Pagado: return 'bg-green-100 text-green-800';
-    case EstatusPrecio.Pendiente: return 'bg-yellow-100 text-yellow-800';
-    case EstatusPrecio.Vencido: return 'bg-red-100 text-red-800';
+    case EstatusPedido.Entregado: return 'bg-green-100 text-green-800';
+    case EstatusPedido.Preparacion: return 'bg-yellow-100 text-yellow-800';
+    case EstatusPedido.EnEspera: return 'bg-blue-100 text-blue-800';
+    case EstatusPedido.Cancelado: return 'bg-red-100 text-red-800';
+    case EstatusPedido.EnTransito: return 'bg-purple-100 text-purple-800';
+    case EstatusPedido.Regresado: return 'bg-orange-100 text-orange-800';
     default: return 'bg-gray-100 text-gray-800';
   }
 };
@@ -53,17 +58,19 @@ const formatCurrency = (amount: number) => {
     return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
 
-const PreciosTable: React.FC<PreciosTableProps> = ({ setIsSelectOpen }) => {
-  const [precios, setPrecios] = useState<Precio[]>(initialPrecios);
+const PreciosTable: React.FC<PreciosTableProps> = ({ precios, setPrecios, estatusConfig, setIsSelectOpen }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newPrecio, setNewPrecio] = useState<Omit<Precio, 'id' | 'ganancia'>>({
-    folio: '', estatus: EstatusPrecio.Pendiente, fentrega: '', cliente: '', fPago: '', precio: 0, envio: 0, costo: 0, producto: '', sku: ''
+    folio: '', estatus: estatusConfig[0]?.nombre || EstatusPedido.EnEspera, fentrega: '', cliente: '', fPago: '', precio: 0, envio: 0, costo: 0, producto: '', sku: ''
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<Precio | null>(null);
+  const [editingCell, setEditingCell] = useState<{ rowId: string; columnKey: keyof Precio } | null>(null);
 
   const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>(null);
+
+  const estatusOptions = useMemo(() => estatusConfig.map(s => ({ value: s.nombre, label: s.nombre })), [estatusConfig]);
 
   const sortedPrecios = useMemo(() => {
     let sortableItems = [...precios];
@@ -89,10 +96,8 @@ const PreciosTable: React.FC<PreciosTableProps> = ({ setIsSelectOpen }) => {
     setSortConfig({ key, direction });
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    const isNumber = type === 'number';
-    setNewPrecio({ ...newPrecio, [name]: isNumber ? parseFloat(value) || 0 : value });
+  const handleModalFormChange = (name: string, value: any) => {
+    setNewPrecio(prev => ({ ...prev, [name]: value }));
   };
   
   const handleAddPrecio = (e: React.FormEvent) => {
@@ -106,11 +111,12 @@ const PreciosTable: React.FC<PreciosTableProps> = ({ setIsSelectOpen }) => {
     };
     setPrecios([...precios, newRecord]);
     setIsModalOpen(false);
-    setNewPrecio({ folio: '', estatus: EstatusPrecio.Pendiente, fentrega: '', cliente: '', fPago: '', precio: 0, envio: 0, costo: 0, producto: '', sku: '' });
+    setNewPrecio({ folio: '', estatus: estatusConfig[0]?.nombre || EstatusPedido.EnEspera, fentrega: '', cliente: '', fPago: '', precio: 0, envio: 0, costo: 0, producto: '', sku: '' });
   };
 
   const handleEditClick = (precio: Precio) => {
     setEditingId(precio.id);
+    setEditingCell(null);
     setEditFormData({ ...precio });
   };
   
@@ -140,6 +146,73 @@ const PreciosTable: React.FC<PreciosTableProps> = ({ setIsSelectOpen }) => {
       setEditFormData({ ...editFormData, [name]: value });
   };
 
+  const handleCellDoubleClick = (rowId: string, columnKey: keyof Precio) => {
+    if (editingId !== rowId) {
+        setEditingCell({ rowId, columnKey });
+    }
+  };
+
+  const handleCellUpdate = (rowId: string, columnKey: keyof Precio, value: any) => {
+    setPrecios(prevPrecios =>
+      prevPrecios.map(p =>
+        p.id === rowId ? { ...p, [columnKey]: value } : p
+      )
+    );
+    setEditingCell(null);
+  };
+
+  const handleCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+          (e.target as HTMLElement).blur();
+      } else if (e.key === 'Escape') {
+          setEditingCell(null);
+      }
+  };
+
+  const renderCell = (p: Precio, columnKey: keyof Precio) => {
+    const isEditing = editingCell?.rowId === p.id && editingCell?.columnKey === columnKey;
+    const isCurrency = ['precio', 'envio', 'costo', 'ganancia'].includes(columnKey);
+    const isDate = ['fentrega'].includes(columnKey);
+
+    if (isEditing) {
+        if (columnKey === 'estatus') {
+            return (
+                <CustomSelect
+                    value={p.estatus}
+                    options={estatusOptions}
+                    onChange={(value) => handleCellUpdate(p.id, columnKey, value as EstatusPedido)}
+                    onOpenChange={setIsSelectOpen}
+                />
+            );
+        }
+        return (
+            <input
+                type={isCurrency ? 'number' : isDate ? 'date' : 'text'}
+                defaultValue={p[columnKey] as any}
+                onBlur={(e) => handleCellUpdate(p.id, columnKey, isCurrency ? parseFloat(e.target.value) || 0 : e.target.value)}
+                onKeyDown={handleCellKeyDown}
+                autoFocus
+                className="w-full px-2 py-1 border rounded-md bg-white text-sm"
+            />
+        );
+    }
+    
+    if (columnKey === 'estatus') {
+        return (
+            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(p.estatus)}`}>
+                {p.estatus}
+            </span>
+        );
+    }
+    
+    if (isCurrency) {
+      const value = p[columnKey] as number;
+      return <span className={`text-sm ${columnKey === 'ganancia' ? 'text-green-600 font-semibold' : 'text-gray-500'}`}>{formatCurrency(value)}</span>
+    }
+
+    return <span className="text-sm text-gray-500">{p[columnKey]}</span>;
+  };
+
   const headers: { key: SortKeys, title: string }[] = [
     { key: 'id', title: 'ID' },
     { key: 'folio', title: 'Folio' },
@@ -164,7 +237,7 @@ const PreciosTable: React.FC<PreciosTableProps> = ({ setIsSelectOpen }) => {
             <td className="px-6 py-4">
                 <CustomSelect
                     value={editFormData.estatus}
-                    options={Object.values(EstatusPrecio).map(s => ({ value: s, label: s }))}
+                    options={estatusOptions}
                     onChange={(value) => handleCustomSelectChange('estatus', value)}
                     onOpenChange={setIsSelectOpen}
                 />
@@ -188,26 +261,15 @@ const PreciosTable: React.FC<PreciosTableProps> = ({ setIsSelectOpen }) => {
   
   const renderReadOnlyRow = (p: Precio) => (
     <tr key={p.id} className="hover:bg-gray-50">
-        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{p.id}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.folio}</td>
-        <td className="px-6 py-4 whitespace-nowrap">
-            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(p.estatus)}`}>
-            {p.estatus}
-            </span>
+      {headers.map(header => (
+        <td onDoubleClick={() => handleCellDoubleClick(p.id, header.key)} key={header.key} className="px-6 py-4 whitespace-nowrap">
+          {renderCell(p, header.key)}
         </td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.fentrega}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.cliente}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.fPago}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatCurrency(p.precio)}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatCurrency(p.envio)}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatCurrency(p.costo)}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">{formatCurrency(p.ganancia)}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.producto}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.sku}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-4">
-            <button onClick={() => handleEditClick(p)} className="text-indigo-600 hover:text-indigo-900"><EditIcon /></button>
-            <button className="text-red-600 hover:text-red-900"><DeleteIcon /></button>
-        </td>
+      ))}
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-4">
+          <button onClick={() => handleEditClick(p)} className="text-indigo-600 hover:text-indigo-900"><EditIcon /></button>
+          <button className="text-red-600 hover:text-red-900"><DeleteIcon /></button>
+      </td>
     </tr>
   );
 
@@ -258,22 +320,25 @@ const PreciosTable: React.FC<PreciosTableProps> = ({ setIsSelectOpen }) => {
              <h3 className="text-2xl font-semibold text-gray-800 mb-6">Crear Nuevo Registro de Precio</h3>
              <form onSubmit={handleAddPrecio}>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div><label className="text-gray-700">Folio</label><input name="folio" value={newPrecio.folio} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Folio</label><input name="folio" value={newPrecio.folio} onChange={e => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
                     <div>
                         <label className="text-gray-700">Estatus</label>
-                        <select name="estatus" value={newPrecio.estatus} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            {Object.values(EstatusPrecio).map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                        <CustomSelect
+                            value={newPrecio.estatus}
+                            options={estatusOptions}
+                            onChange={(value) => handleModalFormChange('estatus', value)}
+                            onOpenChange={setIsSelectOpen}
+                        />
                     </div>
-                    <div><label className="text-gray-700">Fecha de Entrega</label><input type="date" name="fentrega" value={newPrecio.fentrega} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
-                    <div><label className="text-gray-700">Cliente</label><input name="cliente" value={newPrecio.cliente} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
-                    <div><label className="text-gray-700">Forma de Pago</label><input type="text" name="fPago" value={newPrecio.fPago} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
-                    <div><label className="text-gray-700">Producto</label><input name="producto" value={newPrecio.producto} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
-                    <div><label className="text-gray-700">SKU</label><input name="sku" value={newPrecio.sku} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Fecha de Entrega</label><input type="date" name="fentrega" value={newPrecio.fentrega} onChange={e => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Cliente</label><input name="cliente" value={newPrecio.cliente} onChange={e => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Forma de Pago</label><input type="text" name="fPago" value={newPrecio.fPago} onChange={e => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Producto</label><input name="producto" value={newPrecio.producto} onChange={e => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">SKU</label><input name="sku" value={newPrecio.sku} onChange={e => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
                     <div className="md:col-span-1"></div> {/* Placeholder for alignment */}
-                    <div><label className="text-gray-700">Precio</label><input type="number" step="0.01" name="precio" value={newPrecio.precio} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
-                    <div><label className="text-gray-700">Envío</label><input type="number" step="0.01" name="envio" value={newPrecio.envio} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
-                    <div><label className="text-gray-700">Costo</label><input type="number" step="0.01" name="costo" value={newPrecio.costo} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Precio</label><input type="number" step="0.01" name="precio" value={newPrecio.precio} onChange={e => handleModalFormChange(e.target.name, parseFloat(e.target.value) || 0)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Envío</label><input type="number" step="0.01" name="envio" value={newPrecio.envio} onChange={e => handleModalFormChange(e.target.name, parseFloat(e.target.value) || 0)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Costo</label><input type="number" step="0.01" name="costo" value={newPrecio.costo} onChange={e => handleModalFormChange(e.target.name, parseFloat(e.target.value) || 0)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
                 </div>
                 <div className="flex justify-end mt-8 space-x-4">
                     <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 text-gray-800 border border-gray-300 rounded-md hover:bg-gray-100">Cancelar</button>

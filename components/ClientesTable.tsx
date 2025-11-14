@@ -1,19 +1,24 @@
 
 import React, { useState, useMemo, Fragment } from 'react';
-import { Cliente, EstatusCliente } from '../lib/types';
-import { initialClientes } from '../lib/data';
+import { Cliente, EstatusPedido, EstatusConfig } from '../lib/types';
 import { PlusIcon, EditIcon, DeleteIcon, SaveIcon, CancelIcon, SortIcon, SortAscIcon, SortDescIcon } from './icons/Icons';
 import CustomSelect from './CustomSelect';
 
 interface ClientesTableProps {
+  clientes: Cliente[];
+  setClientes: React.Dispatch<React.SetStateAction<Cliente[]>>;
+  estatusConfig: EstatusConfig[];
   setIsSelectOpen: (isOpen: boolean) => void;
 }
 
-const getStatusColor = (status: EstatusCliente) => {
+const getStatusColor = (status: EstatusPedido) => {
   switch (status) {
-    case EstatusCliente.Activo: return 'bg-green-100 text-green-800';
-    case EstatusCliente.Inactivo: return 'bg-gray-100 text-gray-800';
-    case EstatusCliente.Potencial: return 'bg-blue-100 text-blue-800';
+    case EstatusPedido.Entregado: return 'bg-green-100 text-green-800';
+    case EstatusPedido.Preparacion: return 'bg-yellow-100 text-yellow-800';
+    case EstatusPedido.EnEspera: return 'bg-blue-100 text-blue-800';
+    case EstatusPedido.Cancelado: return 'bg-red-100 text-red-800';
+    case EstatusPedido.EnTransito: return 'bg-purple-100 text-purple-800';
+    case EstatusPedido.Regresado: return 'bg-orange-100 text-orange-800';
     default: return 'bg-gray-100 text-gray-800';
   }
 };
@@ -49,17 +54,19 @@ const SortableHeader: React.FC<{
   );
 };
 
-const ClientesTable: React.FC<ClientesTableProps> = ({ setIsSelectOpen }) => {
-  const [clientes, setClientes] = useState<Cliente[]>(initialClientes);
+const ClientesTable: React.FC<ClientesTableProps> = ({ clientes, setClientes, estatusConfig, setIsSelectOpen }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCliente, setNewCliente] = useState<Omit<Cliente, 'id'>>({
-    folio: '', estatus: EstatusCliente.Activo, fentrega: '', cliente: '', correo: '', telefono: '', destinatario: '', telDestino: ''
+    folio: '', estatus: estatusConfig[0]?.nombre || EstatusPedido.EnEspera, fentrega: '', cliente: '', correo: '', telefono: '', destinatario: '', telDestino: ''
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<Cliente | null>(null);
+  const [editingCell, setEditingCell] = useState<{ rowId: string; columnKey: keyof Cliente } | null>(null);
 
   const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>(null);
+
+  const estatusOptions = useMemo(() => estatusConfig.map(s => ({ value: s.nombre, label: s.nombre })), [estatusConfig]);
 
   const sortedClientes = useMemo(() => {
     let sortableItems = [...clientes];
@@ -85,9 +92,8 @@ const ClientesTable: React.FC<ClientesTableProps> = ({ setIsSelectOpen }) => {
     setSortConfig({ key, direction });
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setNewCliente({ ...newCliente, [name]: value });
+  const handleModalFormChange = (name: string, value: string) => {
+    setNewCliente(prev => ({ ...prev, [name]: value }));
   };
   
   const handleAddCliente = (e: React.FormEvent) => {
@@ -96,11 +102,12 @@ const ClientesTable: React.FC<ClientesTableProps> = ({ setIsSelectOpen }) => {
     const newRecord: Cliente = { ...newCliente, id: newId };
     setClientes([...clientes, newRecord]);
     setIsModalOpen(false);
-    setNewCliente({ folio: '', estatus: EstatusCliente.Activo, fentrega: '', cliente: '', correo: '', telefono: '', destinatario: '', telDestino: '' });
+    setNewCliente({ folio: '', estatus: estatusConfig[0]?.nombre || EstatusPedido.EnEspera, fentrega: '', cliente: '', correo: '', telefono: '', destinatario: '', telDestino: '' });
   };
 
   const handleEditClick = (cliente: Cliente) => {
     setEditingId(cliente.id);
+    setEditingCell(null);
     setEditFormData({ ...cliente });
   };
   
@@ -128,6 +135,67 @@ const ClientesTable: React.FC<ClientesTableProps> = ({ setIsSelectOpen }) => {
       setEditFormData({ ...editFormData, [name]: value });
   };
 
+  const handleCellDoubleClick = (rowId: string, columnKey: keyof Cliente) => {
+    if (editingId !== rowId) {
+        setEditingCell({ rowId, columnKey });
+    }
+  };
+
+  const handleCellUpdate = (rowId: string, columnKey: keyof Cliente, value: any) => {
+    setClientes(prevClientes =>
+      prevClientes.map(c =>
+        c.id === rowId ? { ...c, [columnKey]: value } : c
+      )
+    );
+    setEditingCell(null);
+  };
+
+  const handleCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+          (e.target as HTMLElement).blur();
+      } else if (e.key === 'Escape') {
+          setEditingCell(null);
+      }
+  };
+
+  const renderCell = (c: Cliente, columnKey: keyof Cliente) => {
+    const isEditing = editingCell?.rowId === c.id && editingCell?.columnKey === columnKey;
+    const isDate = ['fentrega'].includes(columnKey);
+
+    if (isEditing) {
+        if (columnKey === 'estatus') {
+            return (
+                <CustomSelect
+                    value={c.estatus}
+                    options={estatusOptions}
+                    onChange={(value) => handleCellUpdate(c.id, columnKey, value as EstatusPedido)}
+                    onOpenChange={setIsSelectOpen}
+                />
+            );
+        }
+        return (
+            <input
+                type={isDate ? 'date' : 'text'}
+                defaultValue={c[columnKey] as any}
+                onBlur={(e) => handleCellUpdate(c.id, columnKey, e.target.value)}
+                onKeyDown={handleCellKeyDown}
+                autoFocus
+                className="w-full px-2 py-1 border rounded-md bg-white text-sm"
+            />
+        );
+    }
+    
+    if (columnKey === 'estatus') {
+        return (
+            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(c.estatus)}`}>
+                {c.estatus}
+            </span>
+        );
+    }
+    
+    return <span className="text-sm text-gray-500">{c[columnKey]}</span>;
+  };
+
   const headers: { key: SortKeys, title: string }[] = [
     { key: 'id', title: 'ID' },
     { key: 'folio', title: 'Folio' },
@@ -149,7 +217,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({ setIsSelectOpen }) => {
             <td className="px-6 py-4">
                 <CustomSelect
                     value={editFormData.estatus}
-                    options={Object.values(EstatusCliente).map(s => ({ value: s, label: s }))}
+                    options={estatusOptions}
                     onChange={(value) => handleCustomSelectChange('estatus', value)}
                     onOpenChange={setIsSelectOpen}
                 />
@@ -170,23 +238,15 @@ const ClientesTable: React.FC<ClientesTableProps> = ({ setIsSelectOpen }) => {
   
   const renderReadOnlyRow = (c: Cliente) => (
     <tr key={c.id} className="hover:bg-gray-50">
-        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{c.id}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{c.folio}</td>
-        <td className="px-6 py-4 whitespace-nowrap">
-            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(c.estatus)}`}>
-            {c.estatus}
-            </span>
+      {headers.map(header => (
+        <td onDoubleClick={() => handleCellDoubleClick(c.id, header.key)} key={header.key} className="px-6 py-4 whitespace-nowrap">
+          {renderCell(c, header.key)}
         </td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{c.fentrega}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{c.cliente}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{c.correo}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{c.telefono}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{c.destinatario}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{c.telDestino}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-4">
-            <button onClick={() => handleEditClick(c)} className="text-indigo-600 hover:text-indigo-900"><EditIcon /></button>
-            <button className="text-red-600 hover:text-red-900"><DeleteIcon /></button>
-        </td>
+      ))}
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-4">
+          <button onClick={() => handleEditClick(c)} className="text-indigo-600 hover:text-indigo-900"><EditIcon /></button>
+          <button className="text-red-600 hover:text-red-900"><DeleteIcon /></button>
+      </td>
     </tr>
   );
 
@@ -237,19 +297,22 @@ const ClientesTable: React.FC<ClientesTableProps> = ({ setIsSelectOpen }) => {
              <h3 className="text-2xl font-semibold text-gray-800 mb-6">Crear Nuevo Cliente</h3>
              <form onSubmit={handleAddCliente}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div><label className="text-gray-700">Folio</label><input name="folio" value={newCliente.folio} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Folio</label><input name="folio" value={newCliente.folio} onChange={(e) => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
                     <div>
                         <label className="text-gray-700">Estatus</label>
-                        <select name="estatus" value={newCliente.estatus} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            {Object.values(EstatusCliente).map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                        <CustomSelect
+                            value={newCliente.estatus}
+                            options={estatusOptions}
+                            onChange={(value) => handleModalFormChange('estatus', value)}
+                            onOpenChange={setIsSelectOpen}
+                        />
                     </div>
-                    <div><label className="text-gray-700">Fecha de Entrega</label><input type="date" name="fentrega" value={newCliente.fentrega} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
-                    <div><label className="text-gray-700">Cliente</label><input name="cliente" value={newCliente.cliente} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
-                    <div><label className="text-gray-700">Correo Electrónico</label><input type="email" name="correo" value={newCliente.correo} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
-                    <div><label className="text-gray-700">Teléfono</label><input type="tel" name="telefono" value={newCliente.telefono} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
-                    <div><label className="text-gray-700">Destinatario</label><input name="destinatario" value={newCliente.destinatario} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
-                    <div><label className="text-gray-700">Teléfono Destino</label><input type="tel" name="telDestino" value={newCliente.telDestino} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Fecha de Entrega</label><input type="date" name="fentrega" value={newCliente.fentrega} onChange={(e) => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Cliente</label><input name="cliente" value={newCliente.cliente} onChange={(e) => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Correo Electrónico</label><input type="email" name="correo" value={newCliente.correo} onChange={(e) => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Teléfono</label><input type="tel" name="telefono" value={newCliente.telefono} onChange={(e) => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Destinatario</label><input name="destinatario" value={newCliente.destinatario} onChange={(e) => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                    <div><label className="text-gray-700">Teléfono Destino</label><input type="tel" name="telDestino" value={newCliente.telDestino} onChange={(e) => handleModalFormChange(e.target.name, e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
                 </div>
                 <div className="flex justify-end mt-8 space-x-4">
                     <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 text-gray-800 border border-gray-300 rounded-md hover:bg-gray-100">Cancelar</button>

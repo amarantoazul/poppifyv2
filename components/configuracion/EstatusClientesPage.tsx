@@ -1,35 +1,23 @@
 
 import React, { useState, Fragment } from 'react';
-import { EstatusConfig, Pedido, Precio, Cliente, Logistica, Personal } from '../../lib/types';
+// FIX: Replace non-existent `EstatusClienteConfig` with the correct unified `EstatusConfig` type.
+import { EstatusConfig, Cliente, EstatusPedido } from '../../lib/types';
 import { EditIcon, DeleteIcon, PauseIcon, PlusIcon, SaveIcon, CancelIcon } from '../icons/Icons';
 
-type AllData = {
-    pedidos: Pedido[];
-    precios: Precio[];
-    clientes: Cliente[];
-    logistica: Logistica[];
-    personal: Personal[];
-}
-
-type SetAllData = {
-    setPedidos: React.Dispatch<React.SetStateAction<Pedido[]>>;
-    setPrecios: React.Dispatch<React.SetStateAction<Precio[]>>;
-    setClientes: React.Dispatch<React.SetStateAction<Cliente[]>>;
-    setLogistica: React.Dispatch<React.SetStateAction<Logistica[]>>;
-    setPersonal: React.Dispatch<React.SetStateAction<Personal[]>>;
-}
-
-interface EstatusPageProps {
+interface EstatusClientesPageProps {
+  // FIX: Use `EstatusConfig` type.
   estatuses: EstatusConfig[];
   setEstatuses: React.Dispatch<React.SetStateAction<EstatusConfig[]>>;
-  allData: AllData;
-  setAllData: SetAllData;
+  clientes: Cliente[];
+  setClientes: React.Dispatch<React.SetStateAction<Cliente[]>>;
 }
 
-const EstatusPage: React.FC<EstatusPageProps> = ({ estatuses, setEstatuses, allData, setAllData }) => {
+const EstatusClientesPage: React.FC<EstatusClientesPageProps> = ({ estatuses, setEstatuses, clientes, setClientes }) => {
     const [editingId, setEditingId] = useState<number | null>(null);
+    // FIX: Use `EstatusConfig` type.
     const [editFormData, setEditFormData] = useState<EstatusConfig | null>(null);
 
+    // FIX: Use `EstatusConfig` type.
     const handleEditClick = (estatus: EstatusConfig) => {
         setEditingId(estatus.id);
         setEditFormData({ ...estatus });
@@ -49,17 +37,18 @@ const EstatusPage: React.FC<EstatusPageProps> = ({ estatuses, setEstatuses, allD
         const oldStatusName = originalStatus.nombre;
         const newStatusName = editFormData.nombre;
 
-        // 1. Update the estatuses configuration array
         const newEstatuses = estatuses.map((estatus) => (estatus.id === id ? editFormData : estatus));
         setEstatuses(newEstatuses);
 
-        // 2. If the name changed, update all related data across all modules
         if (oldStatusName !== newStatusName) {
-            setAllData.setPedidos(allData.pedidos.map(item => item.estatus === oldStatusName ? { ...item, estatus: newStatusName } : item));
-            setAllData.setPrecios(allData.precios.map(item => item.estatus === oldStatusName ? { ...item, estatus: newStatusName } : item));
-            setAllData.setClientes(allData.clientes.map(item => item.estatus === oldStatusName ? { ...item, estatus: newStatusName } : item));
-            setAllData.setLogistica(allData.logistica.map(item => item.estatus === oldStatusName ? { ...item, estatus: newStatusName } : item));
-            setAllData.setPersonal(allData.personal.map(item => item.estatus === oldStatusName ? { ...item, estatus: newStatusName } : item));
+            const updatedClientes = clientes.map(cliente => {
+                if (cliente.estatus === oldStatusName) {
+                    // FIX: Ensure the new status name is cast to EstatusPedido
+                    return { ...cliente, estatus: newStatusName as EstatusPedido };
+                }
+                return cliente;
+            });
+            setClientes(updatedClientes);
         }
 
         setEditingId(null);
@@ -68,34 +57,16 @@ const EstatusPage: React.FC<EstatusPageProps> = ({ estatuses, setEstatuses, allD
 
     const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         if (!editFormData) return;
-        const { name, value, type } = e.target;
-        
-        if (type === 'checkbox') {
-            const { checked } = e.target as HTMLInputElement;
-            setEditFormData({
-                ...editFormData,
-                notificaciones: {
-                    ...editFormData.notificaciones,
-                    [name]: checked
-                }
-            });
-        } else {
-            setEditFormData({ ...editFormData, [name]: value });
-        }
+        const { name, value } = e.target;
+        setEditFormData({ ...editFormData, [name]: value as EstatusPedido });
     };
     
+    // FIX: Use `EstatusConfig` type.
     const renderReadOnlyRow = (estatus: EstatusConfig) => (
          <tr key={estatus.id} className="hover:bg-gray-50">
             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center text-gray-900">{estatus.id}</td>
             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">{estatus.nombre}</td>
             <td className="px-6 py-4 text-sm text-gray-500 max-w-sm">{estatus.descripcion}</td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <div className="flex justify-center items-center space-x-4">
-                    <input type="checkbox" readOnly checked={estatus.notificaciones.push} className="form-checkbox h-5 w-5 text-primary rounded focus:ring-indigo-500" title="Notificación Push" />
-                    <input type="checkbox" readOnly checked={estatus.notificaciones.sms} className="form-checkbox h-5 w-5 text-primary rounded focus:ring-indigo-500" title="Notificación SMS" />
-                    <input type="checkbox" readOnly checked={estatus.notificaciones.email} className="form-checkbox h-5 w-5 text-primary rounded focus:ring-indigo-500" title="Notificación Email" />
-                </div>
-            </td>
             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-4">
                 <button onClick={() => handleEditClick(estatus)} className="text-indigo-600 hover:text-indigo-900" title="Editar"><EditIcon /></button>
                 <button className="text-yellow-600 hover:text-yellow-900" title="Pausar"><PauseIcon /></button>
@@ -115,13 +86,6 @@ const EstatusPage: React.FC<EstatusPageProps> = ({ estatuses, setEstatuses, allD
                 <td className="px-6 py-4">
                      <textarea name="descripcion" value={editFormData.descripcion} onChange={handleEditFormChange} className="w-full px-2 py-1 border rounded-md" rows={2}></textarea>
                 </td>
-                <td className="px-6 py-4">
-                    <div className="flex justify-center items-center space-x-4">
-                        <input type="checkbox" name="push" checked={editFormData.notificaciones.push} onChange={handleEditFormChange} className="form-checkbox h-5 w-5 text-primary rounded focus:ring-indigo-500" title="Notificación Push" />
-                        <input type="checkbox" name="sms" checked={editFormData.notificaciones.sms} onChange={handleEditFormChange} className="form-checkbox h-5 w-5 text-primary rounded focus:ring-indigo-500" title="Notificación SMS" />
-                        <input type="checkbox" name="email" checked={editFormData.notificaciones.email} onChange={handleEditFormChange} className="form-checkbox h-5 w-5 text-primary rounded focus:ring-indigo-500" title="Notificación Email" />
-                    </div>
-                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-4">
                     <button onClick={() => handleSaveClick(editFormData.id)} className="text-green-600 hover:text-green-900" title="Guardar"><SaveIcon /></button>
                     <button onClick={handleCancelClick} className="text-gray-600 hover:text-gray-900" title="Cancelar"><CancelIcon /></button>
@@ -133,7 +97,7 @@ const EstatusPage: React.FC<EstatusPageProps> = ({ estatuses, setEstatuses, allD
     return (
         <div>
             <div className="flex justify-between items-center mb-8">
-                <h3 className="text-gray-700 text-3xl font-medium">Estatus (Global)</h3>
+                <h3 className="text-gray-700 text-3xl font-medium">Estatus de Clientes</h3>
                 <button
                   className="flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
                 >
@@ -145,10 +109,9 @@ const EstatusPage: React.FC<EstatusPageProps> = ({ estatuses, setEstatuses, allD
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Orden de Visualización</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Orden</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre del Estatus</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción Breve</th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Notificar Cliente (Push/SMS/Email)</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                         </tr>
                     </thead>
@@ -165,4 +128,4 @@ const EstatusPage: React.FC<EstatusPageProps> = ({ estatuses, setEstatuses, allD
     );
 };
 
-export default EstatusPage;
+export default EstatusClientesPage;

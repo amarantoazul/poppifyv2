@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, Fragment } from 'react';
-import { Pedido, EstatusPedido } from '../lib/types';
+import { Pedido, EstatusPedido, Turno, EstatusConfig, Sucursal } from '../lib/types';
 import { PlusIcon, EditIcon, DeleteIcon, SaveIcon, CancelIcon, SortIcon, SortAscIcon, SortDescIcon } from './icons/Icons';
 import CustomSelect from './CustomSelect';
 
@@ -8,6 +8,9 @@ interface PedidosTableProps {
   pedidos: Pedido[];
   setPedidos: React.Dispatch<React.SetStateAction<Pedido[]>>;
   setIsSelectOpen: (isOpen: boolean) => void;
+  turnos: Turno[];
+  estatusConfig: EstatusConfig[];
+  sucursales: Sucursal[];
 }
 
 const getStatusColor = (status: EstatusPedido) => {
@@ -54,10 +57,10 @@ const SortableHeader: React.FC<{
 };
 
 
-const PedidosTable: React.FC<PedidosTableProps> = ({ pedidos, setPedidos, setIsSelectOpen }) => {
+const PedidosTable: React.FC<PedidosTableProps> = ({ pedidos, setPedidos, setIsSelectOpen, turnos, estatusConfig, sucursales }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newPedido, setNewPedido] = useState<Omit<Pedido, 'id'>>({
-    folio: '', cliente: '', fcompra: '', fentrega: '', estatus: EstatusPedido.EnEspera, turno: 'Matutino', sucursal: '', repartidor: '', producto: ''
+    folio: '', cliente: '', fcompra: '', fentrega: '', estatus: estatusConfig[0]?.nombre || EstatusPedido.EnEspera, turno: turnos[0]?.nombre || '', sucursal: sucursales[0]?.nombre || '', repartidor: '', producto: ''
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -66,6 +69,9 @@ const PedidosTable: React.FC<PedidosTableProps> = ({ pedidos, setPedidos, setIsS
   const [editingCell, setEditingCell] = useState<{ rowId: string; columnKey: keyof Pedido } | null>(null);
 
   const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>(null);
+
+  const estatusOptions = useMemo(() => estatusConfig.map(s => ({ value: s.nombre, label: s.nombre })), [estatusConfig]);
+  const sucursalOptions = useMemo(() => sucursales.map(s => ({ value: s.nombre, label: s.nombre })), [sucursales]);
 
   const sortedPedidos = useMemo(() => {
     let sortableItems = [...pedidos];
@@ -91,9 +97,8 @@ const PedidosTable: React.FC<PedidosTableProps> = ({ pedidos, setPedidos, setIsS
     setSortConfig({ key, direction });
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setNewPedido({ ...newPedido, [name]: value });
+  const handleModalFormChange = (name: keyof Omit<Pedido, 'id'>, value: string) => {
+    setNewPedido(prev => ({ ...prev, [name]: value }));
   };
   
   const handleAddPedido = (e: React.FormEvent) => {
@@ -105,7 +110,7 @@ const PedidosTable: React.FC<PedidosTableProps> = ({ pedidos, setPedidos, setIsS
     };
     setPedidos([...pedidos, newRecord]);
     setIsModalOpen(false);
-    setNewPedido({ folio: '', cliente: '', fcompra: '', fentrega: '', estatus: EstatusPedido.EnEspera, turno: 'Matutino', sucursal: '', repartidor: '', producto: '' });
+    setNewPedido({ folio: '', cliente: '', fcompra: '', fentrega: '', estatus: estatusConfig[0]?.nombre || EstatusPedido.EnEspera, turno: turnos[0]?.nombre || '', sucursal: sucursales[0]?.nombre || '', repartidor: '', producto: '' });
   };
 
   const handleEditClick = (pedido: Pedido) => {
@@ -169,7 +174,7 @@ const PedidosTable: React.FC<PedidosTableProps> = ({ pedidos, setPedidos, setIsS
             return (
                 <CustomSelect
                     value={pedido.estatus}
-                    options={Object.values(EstatusPedido).map(s => ({ value: s, label: s }))}
+                    options={estatusOptions}
                     onChange={(value) => handleCellUpdate(pedido.id, columnKey, value as EstatusPedido)}
                     onOpenChange={setIsSelectOpen}
                 />
@@ -179,12 +184,22 @@ const PedidosTable: React.FC<PedidosTableProps> = ({ pedidos, setPedidos, setIsS
              return (
                 <CustomSelect
                     value={pedido.turno}
-                    options={[{value: 'Matutino', label: 'Matutino'}, {value: 'Vespertino', label: 'Vespertino'}, {value: 'Nocturno', label: 'Nocturno'}]}
+                    options={turnos.map(t => ({ value: t.nombre, label: t.nombre }))}
                     onChange={(value) => handleCellUpdate(pedido.id, columnKey, value)}
                     onOpenChange={setIsSelectOpen}
                 />
             );
         }
+        if (columnKey === 'sucursal') {
+            return (
+               <CustomSelect
+                   value={pedido.sucursal}
+                   options={sucursalOptions}
+                   onChange={(value) => handleCellUpdate(pedido.id, columnKey, value)}
+                   onOpenChange={setIsSelectOpen}
+               />
+           );
+       }
         return (
             <input
                 type={type}
@@ -230,7 +245,7 @@ const PedidosTable: React.FC<PedidosTableProps> = ({ pedidos, setPedidos, setIsS
             <td className="px-6 py-4">
                  <CustomSelect
                     value={editFormData.estatus}
-                    options={Object.values(EstatusPedido).map(s => ({ value: s, label: s }))}
+                    options={estatusOptions}
                     onChange={(value) => handleCustomSelectChange('estatus', value as EstatusPedido)}
                     onOpenChange={setIsSelectOpen}
                 />
@@ -242,12 +257,19 @@ const PedidosTable: React.FC<PedidosTableProps> = ({ pedidos, setPedidos, setIsS
             <td className="px-6 py-4">
                  <CustomSelect
                     value={editFormData.turno}
-                    options={[{value: 'Matutino', label: 'Matutino'}, {value: 'Vespertino', label: 'Vespertino'}, {value: 'Nocturno', label: 'Nocturno'}]}
+                    options={turnos.map(t => ({ value: t.nombre, label: t.nombre }))}
                     onChange={(value) => handleCustomSelectChange('turno', value)}
                     onOpenChange={setIsSelectOpen}
                 />
             </td>
-            <td className="px-6 py-4"><input type="text" name="sucursal" value={editFormData.sucursal} onChange={handleEditFormChange} className="w-full px-2 py-1 border rounded-md" /></td>
+            <td className="px-6 py-4">
+                 <CustomSelect
+                    value={editFormData.sucursal}
+                    options={sucursalOptions}
+                    onChange={(value) => handleCustomSelectChange('sucursal', value)}
+                    onOpenChange={setIsSelectOpen}
+                />
+            </td>
             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-4">
                 <button onClick={() => handleSaveClick(editFormData.id)} className="text-green-600 hover:text-green-900"><SaveIcon /></button>
                 <button onClick={handleCancelClick} className="text-gray-600 hover:text-gray-900"><CancelIcon /></button>
@@ -266,7 +288,7 @@ const PedidosTable: React.FC<PedidosTableProps> = ({ pedidos, setPedidos, setIsS
         <td onDoubleClick={() => handleCellDoubleClick(pedido.id, 'producto')} className="px-6 py-4 whitespace-nowrap">{renderCell(pedido, 'producto')}</td>
         <td onDoubleClick={() => handleCellDoubleClick(pedido.id, 'repartidor')} className="px-6 py-4 whitespace-nowrap">{renderCell(pedido, 'repartidor')}</td>
         <td onDoubleClick={() => handleCellDoubleClick(pedido.id, 'turno')} className="px-6 py-4 whitespace-nowrap">{renderCell(pedido, 'turno', 'select')}</td>
-        <td onDoubleClick={() => handleCellDoubleClick(pedido.id, 'sucursal')} className="px-6 py-4 whitespace-nowrap">{renderCell(pedido, 'sucursal')}</td>
+        <td onDoubleClick={() => handleCellDoubleClick(pedido.id, 'sucursal')} className="px-6 py-4 whitespace-nowrap">{renderCell(pedido, 'sucursal', 'select')}</td>
         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-4">
             <button onClick={() => handleEditClick(pedido)} className="text-indigo-600 hover:text-indigo-900"><EditIcon /></button>
             <button className="text-red-600 hover:text-red-900"><DeleteIcon /></button>
@@ -323,47 +345,54 @@ const PedidosTable: React.FC<PedidosTableProps> = ({ pedidos, setPedidos, setIsS
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="text-gray-700">FOLIO</label>
-                        <input name="folio" value={newPedido.folio} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
+                        <input name="folio" value={newPedido.folio} onChange={(e) => handleModalFormChange('folio', e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
                     </div>
                     <div>
                         <label className="text-gray-700">Estatus</label>
-                        <select name="estatus" value={newPedido.estatus} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            {Object.values(EstatusPedido).map(status => (
-                                <option key={status} value={status}>{status}</option>
-                            ))}
-                        </select>
+                         <CustomSelect
+                            value={newPedido.estatus}
+                            options={estatusOptions}
+                            onChange={(value) => handleModalFormChange('estatus', value as EstatusPedido)}
+                            onOpenChange={setIsSelectOpen}
+                        />
                     </div>
                     <div>
                         <label className="text-gray-700">F. Compra</label>
-                        <input type="date" name="fcompra" value={newPedido.fcompra} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
+                        <input type="date" name="fcompra" value={newPedido.fcompra} onChange={(e) => handleModalFormChange('fcompra', e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
                     </div>
                     <div>
                         <label className="text-gray-700">F. Entrega</label>
-                        <input type="date" name="fentrega" value={newPedido.fentrega} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
+                        <input type="date" name="fentrega" value={newPedido.fentrega} onChange={(e) => handleModalFormChange('fentrega', e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
                     </div>
                     <div>
                         <label className="text-gray-700">Cliente</label>
-                        <input name="cliente" value={newPedido.cliente} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
+                        <input name="cliente" value={newPedido.cliente} onChange={(e) => handleModalFormChange('cliente', e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
                     </div>
                      <div>
                         <label className="text-gray-700">Producto</label>
-                        <input name="producto" value={newPedido.producto} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
+                        <input name="producto" value={newPedido.producto} onChange={(e) => handleModalFormChange('producto', e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
                     </div>
                     <div>
                         <label className="text-gray-700">Repartidor</label>
-                        <input name="repartidor" value={newPedido.repartidor} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
+                        <input name="repartidor" value={newPedido.repartidor} onChange={(e) => handleModalFormChange('repartidor', e.target.value)} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
                     </div>
                     <div>
                         <label className="text-gray-700">Turno</label>
-                        <select name="turno" value={newPedido.turno} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option>Matutino</option>
-                            <option>Vespertino</option>
-                            <option>Nocturno</option>
-                        </select>
+                        <CustomSelect
+                            value={newPedido.turno}
+                            options={turnos.map(t => ({ value: t.nombre, label: t.nombre }))}
+                            onChange={(value) => handleModalFormChange('turno', value)}
+                            onOpenChange={setIsSelectOpen}
+                        />
                     </div>
                      <div className="md:col-span-2">
                         <label className="text-gray-700">Sucursal</label>
-                        <input name="sucursal" value={newPedido.sucursal} onChange={handleInputChange} className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
+                         <CustomSelect
+                            value={newPedido.sucursal}
+                            options={sucursalOptions}
+                            onChange={(value) => handleModalFormChange('sucursal', value)}
+                            onOpenChange={setIsSelectOpen}
+                        />
                     </div>
                 </div>
                 <div className="flex justify-end mt-8 space-x-4">

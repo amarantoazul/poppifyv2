@@ -1,11 +1,16 @@
 
 import React, { useState, Fragment } from 'react';
-import { initialSucursales } from '../../lib/data';
-import { Sucursal } from '../../lib/types';
+import { Sucursal, Pedido } from '../../lib/types';
 import { EditIcon, DeleteIcon, PauseIcon, PlusIcon, CopyIcon, SaveIcon, CancelIcon } from '../icons/Icons';
 
-const SucursalPage: React.FC = () => {
-  const [sucursales, setSucursales] = useState<Sucursal[]>(initialSucursales);
+interface SucursalPageProps {
+  sucursales: Sucursal[];
+  setSucursales: React.Dispatch<React.SetStateAction<Sucursal[]>>;
+  pedidos: Pedido[];
+  setPedidos: React.Dispatch<React.SetStateAction<Pedido[]>>;
+}
+
+const SucursalPage: React.FC<SucursalPageProps> = ({ sucursales, setSucursales, pedidos, setPedidos }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<Sucursal | null>(null);
 
@@ -28,8 +33,23 @@ const SucursalPage: React.FC = () => {
 
   const handleSaveClick = (id: string) => {
     if (!editFormData) return;
+
+    const originalSucursal = sucursales.find(s => s.id === id);
+    if (!originalSucursal) return;
+
+    const oldSucursalName = originalSucursal.nombre;
+    const newSucursalName = editFormData.nombre;
+
     const newSucursales = sucursales.map((s) => (s.id === id ? editFormData : s));
     setSucursales(newSucursales);
+
+    if (oldSucursalName !== newSucursalName) {
+      const updatedPedidos = pedidos.map(pedido =>
+        pedido.sucursal === oldSucursalName ? { ...pedido, sucursal: newSucursalName } : pedido
+      );
+      setPedidos(updatedPedidos);
+    }
+
     setEditingId(null);
     setEditFormData(null);
   };
